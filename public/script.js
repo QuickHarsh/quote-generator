@@ -11,7 +11,7 @@ const fetchQuote = async () => {
     quoteElement.classList.remove('fade-in');
     setTimeout(() => {
         quoteElement.innerText = `"${data.text}"`;
-        authorElement.innerText = `- ${data.author || "Anonymous"}`;
+        authorElement.innerText = `~ ${data.author || "Anonymous"}`;
         quoteElement.classList.add('fade-in');
     }, 100);
 
