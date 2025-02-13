@@ -28,7 +28,6 @@ const QuoteSchema = new mongoose.Schema({
 
 const Quote = mongoose.model("Quote", QuoteSchema);
 
-// ➤ Get a Random Quote
 app.get("/random-quote", async (req, res) => {
   try {
     const quotes = await Quote.find();
@@ -42,7 +41,6 @@ app.get("/random-quote", async (req, res) => {
   }
 });
 
-// ➤ Add a New Quote
 app.post("/add-quote", async (req, res) => {
   try {
     const { quote, author } = req.body;
@@ -70,7 +68,6 @@ app.post("/like-quote", async (req, res) => {
   }
 });
 
-// ➤ Start Server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
