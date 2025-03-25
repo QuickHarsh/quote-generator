@@ -8,17 +8,47 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
+// Debug logging
+console.log(`Starting server on port ${PORT}`);
+console.log(`MongoDB URI available: ${MONGO_URI ? "Yes" : "No"}`);
+
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static("public"));
 
-mongoose
-  .connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log("✅ Connected to MongoDB Atlas"))
-  .catch((err) => {
-    console.error("❌ MongoDB Connection Error:", err);
-    process.exit(1);
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Global error handler caught:", err);
+  res.status(500).json({ error: "Server error", details: err.message });
+});
+
+// Add a health check endpoint
+app.get("/health", (req, res) => {
+  res.status(200).send({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    mongoConnection: mongoose.connection.readyState === 1 ? "connected" : "disconnected"
   });
+});
+
+// Connect to MongoDB with retry logic
+const connectWithRetry = () => {
+  console.log("Attempting to connect to MongoDB...");
+  mongoose
+    .connect(MONGO_URI, { 
+      useNewUrlParser: true, 
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000 // Timeout after 5 seconds
+    })
+    .then(() => console.log("✅ Connected to MongoDB Atlas"))
+    .catch((err) => {
+      console.error("❌ MongoDB Connection Error:", err);
+      console.log("Retrying connection in 5 seconds...");
+      setTimeout(connectWithRetry, 5000);
+    });
+};
+
+connectWithRetry();
 
 const QuoteSchema = new mongoose.Schema({
   text: String,
@@ -68,6 +98,29 @@ app.post("/like-quote", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
+
+// Handle shutdown gracefully
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully");
+  server.close(() => {
+    console.log("Process terminated");
+    mongoose.connection.close(false, () => {
+      console.log("MongoDB connection closed");
+      process.exit(0);
+    });
+  });
+});
+
+process.on("SIGINT", () => {
+  console.log("SIGINT received, shutting down gracefully");
+  server.close(() => {
+    console.log("Process terminated");
+    mongoose.connection.close(false, () => {
+      console.log("MongoDB connection closed");
+      process.exit(0);
+    });
+  });
 });
